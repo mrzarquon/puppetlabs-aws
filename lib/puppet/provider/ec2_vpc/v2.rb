@@ -43,6 +43,8 @@ Puppet::Type.type(:ec2_vpc).provide(:v2, :parent => PuppetX::Puppetlabs::Aws) do
       instance_tenancy: vpc.instance_tenancy,
       ensure: :present,
       region: region,
+      enable_dns_support: ec2_client(region).describe_vpc_attribute({vpc_id: vpc.vpc_id, attribute: "enableDnsSupport"}).enable_dns_support.value,
+      enable_dns_hostnames: ec2_client(region).describe_vpc_attribute({vpc_id: vpc.vpc_id, attribute: "enableDnsHostnames"}).enable_dns_hostnames.value,
       tags: tags_for(vpc),
       dhcp_options: options_name_from_id(region, vpc.dhcp_options_id),
     }
@@ -76,6 +78,22 @@ Puppet::Type.type(:ec2_vpc).provide(:v2, :parent => PuppetX::Puppetlabs::Aws) do
         vpc_id: vpc_id,
       )
     end
+
+    # dns support is off on newly created vpcs, so we have to modify them after creation
+    # lets just pass whatever we have from the user
+    ec2.modify_vpc_attribute({
+      vpc_id: vpc_id,
+        enable_dns_support: {
+          value: resource[:enable_dns_support],
+        },
+    })
+
+    ec2.modify_vpc_attribute({
+      vpc_id: vpc_id,
+        enable_dns_hostnames: {
+          value: resource[:enable_dns_hostnames],
+        },
+    })
 
     # When creating a VPC a Route Table is automatically created
     # We want to name to the same as the VPC so we can find it later
